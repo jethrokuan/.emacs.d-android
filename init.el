@@ -5,13 +5,20 @@
 (add-to-list 'package-archives
              '("org" . "http://orgmode.org/elpa/") t)
 
-;; keep the installed packages in .emacs.d
-(setq package-user-dir (expand-file-name "elpa" user-emacs-directory))
-
 (package-initialize)
 ;; update the package metadata is the local cache is missing
 (unless package-archive-contents
   (package-refresh-contents))
+
+(eval-when-compile
+  (require 'use-package))
+
+(require 'bind-key)
+
+(require 'use-package-ensure)
+(setq use-package-always-ensure t)
+
+(require 'find-lisp)
 
 (when (fboundp 'tool-bar-mode)
   (tool-bar-mode -1))
@@ -50,10 +57,6 @@
 (add-hook 'text-mode-hook 'jethro/truncate-lines-hook)
 (setq create-lockfiles nil)
 
-(use-package tao-theme
-  :init
-  (load-theme 'tao-yang t))
-
 (use-package rainbow-delimiters
   :defer 5
   :hook
@@ -64,116 +67,12 @@
                       :foreground 'unspecified
                       :inherit 'error))
 
-(use-package counsel
-  :hook
-  (after-init . ivy-mode)
-  :diminish ivy-mode
-  :bind
-  (("C-c C-r" . ivy-resume)
-   ("M-x" . counsel-M-x)
-   ("C-c i" . counsel-imenu)
-   ("C-x b" . ivy-switch-buffer)
-   ("C-x B" . ivy-switch-buffer-other-window)
-   ("C-x k" . kill-buffer)
-   ("C-x C-f" . counsel-find-file)
-   ("C-x l" . counsel-locate)
-   ("C-c j" . counsel-git)
-   ("M-y" . counsel-yank-pop)
-   :map help-map
-   ("f" . counsel-describe-function)
-   ("v" . counsel-describe-variable)
-   ("l" . counsel-info-lookup-symbol)
-   :map ivy-minibuffer-map
-   ("C-o" . ivy-occur)
-   ("<return>" . ivy-alt-done)
-   ("M-<return>" . ivy-immediate-done)
-   :map read-expression-map
-   ("C-r" . counsel-minibuffer-history))
-  :custom
-  (counsel-find-file-at-point t)
-  (ivy-use-virtual-buffers t)
-  (ivy-display-style 'fancy)
-  (ivy-use-selectable-prompt t)
-  (ivy-re-builders-alist
-   '((ivy-switch-buffer . ivy--regex-plus)
-     (swiper . ivy--regex-plus)
-     (t . ivy--regex-fuzzy)))
-  :config
-  (ivy-set-actions
-   t
-   '(("I" insert "insert")))
-  (ivy-set-occur 'ivy-switch-buffer 'ivy-switch-buffer-occur))
-
-(use-package swiper
-  :bind
-  (("C-s" . swiper-isearch)
-   ("C-r" . swiper-isearch)
-   ("C-c C-s" . counsel-grep-or-swiper)
-   :map swiper-map
-   ("M-q" . swiper-query-replace)
-   ("C-l". swiper-recenter-top-bottom)
-   ("C-'" . swiper-avy))
-  :custom
-  (counsel-grep-swiper-limit 20000)
-  (counsel-rg-base-command
-   "rg -i -M 120 --no-heading --line-number --color never %s .")
-  (counsel-grep-base-command
-   "rg -i -M 120 --no-heading --line-number --color never '%s' %s"))
-
-(use-package ws-butler
-  :diminish 'ws-butler-mode
-  :hook
-  (prog-mode . ws-butler-mode))
-
 (use-package expand-region
   :bind (("C-=" . er/expand-region)))
 
 (use-package easy-kill
   :bind*
   (([remap kill-ring-save] . easy-kill)))
-
-(use-package aggressive-indent
-  :diminish aggressive-indent-mode
-  :config
-  (global-aggressive-indent-mode +1)
-  :custom
-  (aggressive-indent-excluded-modes
-   '(bibtex-mode
-     cider-repl-mode
-     c-mode
-     c++-mode
-     coffee-mode
-     comint-mode
-     conf-mode
-     Custom-mode
-     diff-mode
-     doc-view-mode
-     dos-mode
-     erc-mode
-     jabber-chat-mode
-     haml-mode
-     intero-mode
-     haskell-mode
-     interative-haskell-mode
-     haskell-interactive-mode
-     image-mode
-     makefile-mode
-     makefile-gmake-mode
-     minibuffer-inactive-mode
-     nix-mode
-     netcmd-mode
-     python-mode
-     sass-mode
-     slim-mode
-     special-mode
-     shell-mode
-     snippet-mode
-     eshell-mode
-     tabulated-list-mode
-     term-mode
-     TeX-output-mode
-     text-mode
-     yaml-mode)))
 
 (bind-key "M-/" 'hippie-expand)
 
@@ -202,11 +101,6 @@
 
 (global-set-key [remap fill-paragraph]
                 #'endless/fill-or-unfill)
-
-(use-package dtrt-indent
-  :diminish t
-  :config
-  (dtrt-indent-mode +1))
 
 (use-package org
   :ensure org-plus-contrib
@@ -267,37 +161,27 @@
       (find-lisp-find-files jethro/org-agenda-directory "\.org$"))
 
 (setq org-capture-templates
-      `(("i" "inbox" entry (file "~/.org/gtd/inbox.org")
+      `(("i" "inbox" entry (file "~/storage/shared/org/gtd/inbox.org")
          "* TODO %?")
-        ("p" "paper" entry (file "~/.org/papers/papers.org")
-         "* TODO %(jethro/trim-citation-title \"%:title\")\n%a" :immediate-finish t)
-        ("e" "email" entry (file+headline "~/.org/gtd/emails.org" "Emails")
-         "* TODO [#A] Reply: %a :@home:@school:" :immediate-finish t)
-        ("l" "link" entry (file "~/.org/gtd/inbox.org")
-         "* TODO %(org-cliplink-capture)" :immediate-finish t)
-        ("z" "elfeed-link" entry (file "~/.org/gtd/inbox.org")
-         "* TODO %a\n" :immediate-finish t)
-        ("w" "Weekly Review" entry (file+olp+datetree "~/.org/gtd/reviews.org")
-         (file "~/.org/gtd/templates/weekly_review.org"))
-        ("s" "Snippet" entry (file "~/.org/deft/capture.org")
-         "* Snippet %<%Y-%m-%d %H:%M>\n%?")))
+        ("p" "paper" entry (file "~/storage/shared/org/papers/papers.org")
+         "* TODO %(jethro/trim-citation-title \"%:title\")\n%a" :immediate-finish t)))
 
 (require 'org-agenda)
 (setq jethro/org-agenda-inbox-view
       `("i" "Inbox" todo ""
-        ((org-agenda-files '("~/.org/gtd/inbox.org")))))
+        ((org-agenda-files '("~/storage/shared/org/gtd/inbox.org")))))
 
 (add-to-list 'org-agenda-custom-commands `,jethro/org-agenda-inbox-view)
 
 (setq jethro/org-agenda-someday-view
       `("s" "Someday" todo ""
-        ((org-agenda-files '("~/.org/gtd/someday.org")))))
+        ((org-agenda-files '("~/storage/shared/org/gtd/someday.org")))))
 
 (add-to-list 'org-agenda-custom-commands `,jethro/org-agenda-someday-view)
 
 (setq jethro/org-agenda-reading-view
       `("r" "Reading" todo ""
-        ((org-agenda-files '("~/.org/gtd/reading.org")))))
+        ((org-agenda-files '("~/storage/shared/org/gtd/reading.org")))))
 
 (add-to-list 'org-agenda-custom-commands `,jethro/org-agenda-reading-view)
 
@@ -412,25 +296,25 @@
                   (org-deadline-warning-days 365)))
          (todo "TODO"
                ((org-agenda-overriding-header "To Refile")
-                (org-agenda-files '("~/.org/gtd/inbox.org"))))
+                (org-agenda-files '("~/storage/shared/org/gtd/inbox.org"))))
          (todo "TODO"
                ((org-agenda-overriding-header "Emails")
-                (org-agenda-files '("~/.org/gtd/emails.org"))))
+                (org-agenda-files '("~/storage/shared/org/gtd/emails.org"))))
          (todo "NEXT"
                ((org-agenda-overriding-header "In Progress")
-                (org-agenda-files '("~/.org/gtd/someday.org"
-                                    "~/.org/gtd/projects.org"
-                                    "~/.org/gtd/next.org"))
+                (org-agenda-files '("~/storage/shared/org/gtd/someday.org"
+                                    "~/storage/shared/org/gtd/projects.org"
+                                    "~/storage/shared/org/gtd/next.org"))
                 ;; (org-agenda-skip-function '(org-agenda-skip-entry-if 'deadline 'scheduled))
                 ))
          (todo "TODO"
                ((org-agenda-overriding-header "Projects")
-                (org-agenda-files '("~/.org/gtd/projects.org"))
+                (org-agenda-files '("~/storage/shared/org/gtd/projects.org"))
                 ;; (org-agenda-skip-function #'jethro/org-agenda-skip-all-siblings-but-first)
                 ))
          (todo "TODO"
                ((org-agenda-overriding-header "One-off Tasks")
-                (org-agenda-files '("~/.org/gtd/next.org"))
+                (org-agenda-files '("~/storage/shared/org/gtd/next.org"))
                 (org-agenda-skip-function '(org-agenda-skip-entry-if 'deadline 'scheduled))))
          nil)))
 
@@ -469,15 +353,6 @@
         (("I" . org-pomodoro)))
   :custom
   (org-pomodoro-format "%s"))
-
-(use-package org-cliplink
-  :bind
-  ("C-c C" . 'jethro/org-capture-link)
-  :config
-  (defun jethro/org-capture-link ()
-    "Captures a link, and stores it in inbox."
-    (interactive)
-    (org-capture nil "l")))
 
 (use-package deft
   :after org
