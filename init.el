@@ -29,6 +29,10 @@
 
 (setq inhibit-startup-screen t)
 
+(use-package zenburn-theme
+  :init
+  (load-theme 'zenburn t))
+
 (use-package autorevert
   :ensure f
   :diminish t
